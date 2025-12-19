@@ -351,11 +351,13 @@
 
 "use client";
 import { useState } from "react";
+import Terminal from "@/components/Terminal";
 
 export default function Home() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+
 
   async function handleSend(e) {
     e.preventDefault();
@@ -430,6 +432,10 @@ export default function Home() {
 
   return (
     <div className="flex flex-col items-center min-h-screen bg-gray-900 text-white p-4">
+      <div className="w-full max-w-4xl mb-6">
+        <h2 className="text-sm text-gray-400 mb-2 font-mono">SYSTEM ACTIVITY LOG</h2>
+        <Terminal />
+      </div>
       <div className="w-full max-w-2xl bg-gray-800 rounded-lg p-6 mb-20 h-[60vh] overflow-y-auto">
         {messages.map((m, i) => (
           <div
