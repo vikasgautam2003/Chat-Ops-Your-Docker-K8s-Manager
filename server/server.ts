@@ -167,50 +167,80 @@ wss.on('connection', (ws) => {
 
 const dockerService = new DockerService();
 
-
 const worker = new Worker(
-    'docker-ops',
-    async (job) => {
-        broadcastLog(`Received Job ${job.id}: \x1b[33m${job.name}\x1b[0m`);
-        try {
-            
-            let result;
-            const { containerId } = job.data;
+  "docker-ops",
+  async (job) => {
+    broadcastLog(
+      `Received Job ${job.id}: \x1b[33m${job.name}\x1b[0m`
+    );
 
+    try {
+      const data = job.data ?? {};
+      const containerId =
+        typeof data.containerId === "string"
+          ? data.containerId.trim()
+          : null;
 
-            switch (job.name) {
-                case 'list_containers':
-                    broadcastLog("  > Connecting to Docker Daemon...");
-                    await new Promise(r => setTimeout(r, 800));
-                    result = await dockerService.listContainers();
-                    broadcastLog(`  > Success: Retrieved ${result.length} containers.`);
-                    break;
+      switch (job.name) {
+  case "list_containers": {
+    broadcastLog("  > Connecting to Docker Daemon...");
+    await new Promise((r) => setTimeout(r, 800));
 
+    const result = await dockerService.listContainers();
 
-                case 'stop_container':
-                    broadcastLog(`  > 🛑 Stopping container: ${containerId}...`);
-                    result = await dockerService.stopContainer(containerId);
-                    broadcastLog(`  > ✔ Container stopped.`);
-                    break;
+    broadcastLog(
+      `  > Success: Retrieved ${result.length} containers.`
+    );
 
-                case 'start_container':
-                    broadcastLog(`  > 🟢 Starting container: ${containerId}...`);
-                    result = await dockerService.startContainer(containerId);
-                    broadcastLog(`  > ✔ Container started.`);
-                    break;
+    return result;
+  }
 
+  case "stop_container": {
+    if (!containerId || containerId === "container_id_value") {
+      throw new Error("Invalid containerId provided");
+    }
 
-                default:
-                    throw new Error(`Unknown job type: ${job.name}`);
-            }
-            broadcastLog(`✔ Job ${job.id} Completed.\r\n`);
-            return result;
-        } catch (err: any) {
-            broadcastLog(`❌ Job Failed: ${err.message}`);
-            throw err;
-        }
-    },
-    { connection: redisConnection }
+    if (!/^[a-f0-9]{12,64}$/i.test(containerId)) {
+      throw new Error(`Invalid containerId format: ${containerId}`);
+    }
+
+    broadcastLog(`  > 🛑 Stopping container: ${containerId}...`);
+
+    const result = await dockerService.stopContainer(containerId);
+
+    broadcastLog("  > ✔ Container stopped.");
+
+    return result;
+  }
+
+  case "start_container": {
+    if (!containerId || containerId === "container_id_value") {
+      throw new Error("Invalid containerId provided");
+    }
+
+    if (!/^[a-f0-9]{12,64}$/i.test(containerId)) {
+      throw new Error(`Invalid containerId format: ${containerId}`);
+    }
+
+    broadcastLog(`  > 🟢 Starting container: ${containerId}...`);
+
+    const result = await dockerService.startContainer(containerId);
+
+    broadcastLog("  > ✔ Container started.");
+
+    return result;
+  }
+
+  default:
+    throw new Error(`Unknown job type: ${job.name}`);
+}
+
+    } catch (err: any) {
+      broadcastLog(`❌ Job Failed: ${err.message}`);
+      throw err;
+    }
+  },
+  { connection: redisConnection }
 );
 
 

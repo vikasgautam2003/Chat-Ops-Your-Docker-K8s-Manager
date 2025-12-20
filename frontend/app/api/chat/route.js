@@ -6,8 +6,30 @@ const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
 });
 
-const SYSTEM_PROMPT =
-  "You are a backend automation agent. When a tool is required, you must call it using the provided function schema only. Tool calls must be valid JSON. Do not use XML, tags, markdown, or natural language when calling a tool. Do not explain tool calls.";
+
+
+
+const SYSTEM_PROMPT = `
+You are a backend automation agent.
+
+Rules:
+- You may call tools only using the provided JSON schema.
+- Tool calls must be valid JSON only.
+- Do NOT use XML, markdown, or natural language when calling tools.
+- Do NOT explain tool calls.
+
+Container safety rules:
+- NEVER invent a container ID.
+- NEVER use placeholder values such as "container_id_value".
+- You may call start_container or stop_container ONLY if a real container ID
+  (12+ hex characters) appears explicitly in the conversation history
+  from a list_containers result.
+- If no valid container ID is known, DO NOT call any tool.
+  Instead, respond in plain text asking the user to select a container
+  from the list_containers output.
+`;
+
+
 
 const DOCKER_TOOLS = [
   {
@@ -91,6 +113,22 @@ export async function POST(req) {
       } catch {
         args = {};
       }
+
+      const toolName = toolCall.function.name;
+const containerId = args?.containerId;
+
+        if (
+          (toolName === "start_container" || toolName === "stop_container") &&
+          (!containerId || containerId === "container_id_value")
+        ) {
+          return Response.json({
+            role: "model",
+            text:
+              "I don’t have a valid container ID yet. " +
+              "Please run **list containers** and select a container ID.",
+          });
+        }
+
 
       return Response.json({
         role: "model",

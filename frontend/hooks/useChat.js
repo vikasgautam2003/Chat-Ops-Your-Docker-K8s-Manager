@@ -50,6 +50,26 @@ export function useChat() {
         });
 
         const toolData = await toolRes.json();
+        
+        if (!toolRes.ok || toolData.error) {
+  setMessages((prev) => [
+    ...prev,
+    {
+      role: "model",
+      parts: [
+        {
+          text: "❌ Failed to execute command. ❌ Invalid container ID. Please run list containers and select a valid container ID.",
+        },
+      ],
+    },
+  ]);
+  setLoading(false);
+  return;
+}
+
+console.log("TOOL RESULT:", toolData.result);
+
+
 
         setActiveResult({
           type: "tool_result",
