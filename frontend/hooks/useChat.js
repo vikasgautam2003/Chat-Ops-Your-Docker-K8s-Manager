@@ -1,15 +1,29 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
 import { useState } from "react";
 
 export function useChat() {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [activeResult, setActiveResult] = useState(null);
 
   const sendMessage = async (userText) => {
     if (!userText.trim()) return;
 
     const userMsg = { role: "user", parts: [{ text: userText }] };
     const nextHistory = [...messages, userMsg];
-
+    
     setMessages(nextHistory);
     setLoading(true);
 
@@ -29,50 +43,34 @@ export function useChat() {
         const toolName = data1.toolRequest.name;
         const toolArgs = data1.toolRequest.args ?? {};
 
-        const toolRes = await fetch(
-          `http://localhost:3001/tools/${toolName}`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(toolArgs),
-          }
-        );
+        const toolRes = await fetch(`http://localhost:3001/tools/${toolName}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(toolArgs),
+        });
 
         const toolData = await toolRes.json();
 
-        const toolMessage = {
+        setActiveResult({
+          type: "tool_result",
+          name: toolName,
+          data: toolData.result,
+          timestamp: new Date().toLocaleTimeString(),
+        });
+
+        const systemUpdateMsg = {
           role: "model",
           parts: [
             {
-              text: `🛠️ ${toolName} result:\n${JSON.stringify(
-                toolData.result,
-                null,
-                2
-              )}`,
+              text: `✅ **${toolName}** executed successfully.\nCheck the **Result Board** for details.`,
             },
           ],
         };
 
-        const historyWithTool = [...nextHistory, toolMessage];
+        const historyWithTool = [...nextHistory, systemUpdateMsg];
         setMessages(historyWithTool);
 
-        const res2 = await fetch("/api/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            history: historyWithTool,
-            message: `Explain the result of ${toolName} to the user.`,
-          }),
-        });
-
-        const data2 = await res2.json();
-
-        if (data2.text) {
-          setMessages((p) => [
-            ...p,
-            { role: "model", parts: [{ text: data2.text }] },
-          ]);
-        }
+        setLoading(false);
         return;
       }
 
@@ -84,7 +82,11 @@ export function useChat() {
       }
     } catch (e) {
       console.error(e);
-      alert("Error processing request");
+      const errorMsg = {
+        role: "model",
+        parts: [{ text: "❌ Error executing command." }],
+      };
+      setMessages((prev) => [...prev, errorMsg]);
     } finally {
       setLoading(false);
     }
@@ -93,6 +95,14 @@ export function useChat() {
   return {
     messages,
     loading,
+    activeResult,
     sendMessage,
   };
 }
+
+
+
+
+
+
+
