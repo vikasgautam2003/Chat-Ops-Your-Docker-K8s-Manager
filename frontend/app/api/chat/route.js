@@ -3,14 +3,9 @@
 
 
 
-
 // import { GoogleGenerativeAI } from "@google/generative-ai";
 
 // const apiKey = process.env.GOOGLE_API_KEY || "";
-// if (!apiKey) {
-//   throw new Error("Missing GOOGLE_API_KEY");
-// }
-
 // const genAI = new GoogleGenerativeAI(apiKey);
 // const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
@@ -20,9 +15,7 @@
 
 //     const chat = model.startChat({
 //       history: history || [],
-//       tools: tools && tools.length > 0
-//         ? [{ functionDeclarations: tools }]
-//         : [],
+//       tools: tools && tools.length > 0 ? [{ functionDeclarations: tools }] : [],
 //     });
 
 //     const result = await chat.sendMessage(message);
@@ -32,7 +25,86 @@
 
 //     if (functionCalls && functionCalls.length > 0) {
 //       const call = functionCalls[0];
+//       return Response.json({
+//         role: "model",
+//         toolRequest: {
+//           name: call.name,
+//           args: call.args || {},
+//         },
+//       });
+//     }
 
+//     return Response.json({
+//       role: "model",
+//       text: response.text(),
+//     });
+//   } catch (error) {
+//     return Response.json(
+//       { error: error instanceof Error ? error.message : "Unknown error" },
+//       { status: 500 }
+//     );
+//   }
+// }
+
+
+
+// import { GoogleGenerativeAI } from "@google/generative-ai";
+
+// const apiKey = process.env.GOOGLE_API_KEY || "";
+// const genAI = new GoogleGenerativeAI(apiKey);
+// const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro" });
+
+
+// const DOCKER_TOOLS = [
+//   {
+//     name: "list_containers",
+//     description: "List all running and stopped Docker containers to see their IDs, names, and status",
+//     parameters: { type: "OBJECT", properties: {} },
+//   },
+//   {
+//     name: "stop_container",
+//     description: "Stop a running docker container using its ID",
+//     parameters: {
+//       type: "OBJECT",
+//       properties: {
+//         containerId: { type: "STRING", description: "The Container ID to stop" },
+//       },
+//       required: ["containerId"],
+//     },
+//   },
+//   {
+//     name: "start_container",
+//     description: "Start a stopped docker container using its ID",
+//     parameters: {
+//       type: "OBJECT",
+//       properties: {
+//         containerId: { type: "STRING", description: "The Container ID to start" },
+//       },
+//       required: ["containerId"],
+//     },
+//   },
+// ];
+
+// export async function POST(req) {
+//   try {
+//     // We don't need 'tools' from the client anymore
+//     const { history, message } = await req.json();
+
+//     const chat = model.startChat({
+//       history: history || [],
+//       // 2. Pass the definitions to the model
+//       tools: [{ functionDeclarations: DOCKER_TOOLS }],
+//     });
+
+//     const result = await chat.sendMessage(message);
+//     const response = result.response;
+
+//     const functionCalls = response.functionCalls();
+
+//     // 3. Handle Tool Requests (Standard Logic)
+//     if (functionCalls && functionCalls.length > 0) {
+//       const call = functionCalls[0];
+      
 //       return Response.json({
 //         role: "model",
 //         toolRequest: {
@@ -58,44 +130,120 @@
 
 
 
-import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const apiKey = process.env.GOOGLE_API_KEY || "";
-const genAI = new GoogleGenerativeAI(apiKey);
-const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+import Groq from "groq-sdk";
+
+const groq = new Groq({
+  apiKey: process.env.GROQ_API_KEY,
+});
+
+const SYSTEM_PROMPT =
+  "You are a backend automation agent. When a tool is required, you must call it using the provided function schema only. Tool calls must be valid JSON. Do not use XML, tags, markdown, or natural language when calling a tool. Do not explain tool calls.";
+
+const DOCKER_TOOLS = [
+  {
+    type: "function",
+    function: {
+      name: "list_containers",
+      description:
+        "List all running and stopped Docker containers to see their IDs, names, and status",
+      parameters: {
+        type: "object",
+        properties: {},
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "stop_container",
+      description: "Stop a running docker container using its ID",
+      parameters: {
+        type: "object",
+        properties: {
+          containerId: { type: "string" },
+        },
+        required: ["containerId"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "start_container",
+      description: "Start a stopped docker container using its ID",
+      parameters: {
+        type: "object",
+        properties: {
+          containerId: { type: "string" },
+        },
+        required: ["containerId"],
+      },
+    },
+  },
+];
 
 export async function POST(req) {
   try {
-    const { history, message, tools } = await req.json();
+    const body = await req.json();
+    const history = Array.isArray(body.history) ? body.history : [];
+    const message =
+      typeof body.message === "string" ? body.message : "";
 
-    const chat = model.startChat({
-      history: history || [],
-      tools: tools && tools.length > 0 ? [{ functionDeclarations: tools }] : [],
+    const messages = [
+      { role: "system", content: SYSTEM_PROMPT },
+      ...history
+        .map((h) => ({
+          role: h.role === "model" ? "assistant" : "user",
+          content: h.parts?.[0]?.text ?? "",
+        }))
+        .filter((m) => m.content.trim().length > 0),
+      { role: "user", content: message },
+    ];
+
+    const completion = await groq.chat.completions.create({
+      model: "llama-3.3-70b-versatile",
+      messages,
+      tools: DOCKER_TOOLS,
+      tool_choice: "auto",
     });
 
-    const result = await chat.sendMessage(message);
-    const response = result.response;
+    const choice = completion.choices[0];
 
-    const functionCalls = response.functionCalls();
+    if (
+      choice.finish_reason === "tool_calls" &&
+      choice.message.tool_calls?.length
+    ) {
+      const toolCall = choice.message.tool_calls[0];
 
-    if (functionCalls && functionCalls.length > 0) {
-      const call = functionCalls[0];
+      let args = {};
+      try {
+        args = JSON.parse(toolCall.function.arguments ?? "{}");
+      } catch {
+        args = {};
+      }
+
       return Response.json({
         role: "model",
         toolRequest: {
-          name: call.name,
-          args: call.args || {},
+          name: toolCall.function.name,
+          args,
         },
       });
     }
 
     return Response.json({
       role: "model",
-      text: response.text(),
+      text: choice.message.content ?? "",
     });
   } catch (error) {
     return Response.json(
-      { error: error instanceof Error ? error.message : "Unknown error" },
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Unknown server error",
+      },
       { status: 500 }
     );
   }

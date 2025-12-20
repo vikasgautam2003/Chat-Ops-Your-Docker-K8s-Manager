@@ -36,4 +36,17 @@ export class DockerService {
             throw new Error("Failed to list containers. Is Docker Desktop running?");
         }
     }
+
+
+    async startContainer(containerId: string) {
+        const container = this.docker.getContainer(containerId);
+        await container.start();
+        return { status: "started", id: containerId };
+    }
+
+    async stopContainer(containerId: string) {
+        const container = this.docker.getContainer(containerId);
+        await container.stop();
+        return { status: "stopped", id: containerId };
+    }
 }
