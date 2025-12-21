@@ -456,34 +456,62 @@ export default function ResultBoard({ result }) {
         <ContainerTable data={result.data} />
       ) : isAction ? (
         <ActionCard data={result.data} type={result.name} />
-      ) : isGenerator ? (
-        <div className="max-w-3xl mx-auto">
-          <div className="mb-4 text-sm text-[#8b949e]">
-            Generated configuration for{" "}
-            <span className="text-white font-bold">
-              {result.args?.language ||
-                result.name?.replace("generate_", "") ||
-                "unknown"}
-            </span>
-            .
-          </div>
+     ) : isGenerator ? (
+  <div className="max-w-3xl mx-auto">
+    <div className="mb-4 text-sm text-[#8b949e]">
+      Generated configuration for{" "}
+      <span className="text-white font-bold">
+        {result.args?.language ||
+          result.name?.replace("generate_", "") ||
+          "unknown"}
+      </span>
+      .
+    </div>
 
-          {(() => {
-            const isK8s = result.name.includes("k8s");
-            const content = result.data?.code || result.data || "";
+    {(() => {
+      const code = result.data?.code || result.data || "";
+      const isK8s =
+        result.name.includes("k8s") || result.name.includes("manifest");
 
-            const generatedFiles = [
-              {
-                filename: isK8s ? "deployment.yaml" : "Dockerfile",
-                language: isK8s ? "yaml" : "dockerfile",
-                code: content,
-              },
-            ];
+      let files = [];
 
-            return <CodeBlock files={generatedFiles} />;
-          })()}
-        </div>
-      ) : (
+      const parts = isK8s ? code.split(/\n\s*---\s*\n/) : [code];
+      const validParts = parts.filter((p) => p.trim().length > 0);
+
+      if (isK8s && validParts.length > 1) {
+        files = validParts.map((part, index) => {
+          const kindMatch = part.match(/kind:\s*([A-Za-z]+)/);
+          const kind = kindMatch
+            ? kindMatch[1].toLowerCase()
+            : `manifest-${index + 1}`;
+
+          return {
+            filename: `${kind}.yaml`,
+            language: "yaml",
+            code: part.trim(),
+          };
+        });
+      } else {
+        const kindMatch = code.match(/kind:\s*([A-Za-z]+)/);
+        const defaultName = kindMatch
+          ? `${kindMatch[1].toLowerCase()}.yaml`
+          : "deployment.yaml";
+
+        files = [
+          {
+            filename: isK8s ? defaultName : "Dockerfile",
+            language: isK8s ? "yaml" : "dockerfile",
+            code: code.trim(),
+          },
+        ];
+      }
+
+      return <CodeBlock files={files} />;
+    })()}
+  </div>
+) : (
+
+
         <div className="rounded-lg bg-[#0d1117] border border-[#30363d] p-4 font-mono text-sm">
           <pre className="whitespace-pre-wrap break-words text-[#c9d1d9]">
             {JSON.stringify(result.data, null, 4)}
