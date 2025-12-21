@@ -9,6 +9,7 @@
 
 "use client";
 import { useEffect } from "react";
+import CodeBlock from "./CodeBlock";
 
 const getProp = (obj, keys) => {
   if (!obj) return null;
@@ -184,6 +185,7 @@ export default function ResultBoard({ result }) {
   const isAction =
     result.name === "start_container" ||
     result.name === "stop_container";
+  const isGenerator = result.name === 'generate_dockerfile';
 
   return (
     <div className="h-full w-full bg-[#0b0d10] p-6 overflow-y-auto font-sans">
@@ -205,6 +207,19 @@ export default function ResultBoard({ result }) {
         <ContainerTable data={result.data} />
       ) : isAction ? (
         <ActionCard data={result.data} type={result.name} />
+      ) : isGenerator ? (
+        <div className="max-w-3xl mx-auto">
+          <div className="mb-4 text-sm text-[#8b949e]">
+            Generated a production-ready Dockerfile for{" "}
+            <span className="text-white font-bold">
+              {result.args?.language || "unknown"}
+            </span>.
+          </div>
+          <CodeBlock
+            code={result.data.code}
+            language={result.data.language}
+          />
+        </div>
       ) : (
         <div className="rounded-lg bg-[#0d1117] border border-[#30363d] p-4 font-mono text-sm">
           <pre className="whitespace-pre-wrap break-words text-[#c9d1d9]">

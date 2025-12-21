@@ -72,5 +72,24 @@ const DOCKER_TOOLS = [
         required: ["imageName"],
       },
     },
+    
+  },
+
+  {
+    type: "function",
+    function: {
+      name: "generate_dockerfile",
+      description: "Generate a production-ready Dockerfile for a specific programming language.",
+      parameters: {
+        type: "object",
+        properties: {
+          language: { 
+            type: "string", 
+            description: "The programming language (e.g. node, python, go)" 
+          },
+        },
+        required: ["language"],
+      },
+    },
   },
 ];

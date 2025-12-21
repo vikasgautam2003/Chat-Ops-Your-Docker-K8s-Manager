@@ -247,6 +247,18 @@ list_containers()
 
 --------------------------------------------------
 
+### 5. CODE GENERATION (Dockerfile)
+**Trigger:** User asks to "generate", "create", "make", or "write" a Dockerfile.
+
+✅ **CORRECT ACTION:**
+Call: generate_dockerfile({ language: "language_name" })
+
+**Examples:**
+- "Generate a Dockerfile for Node.js" -> generate_dockerfile({ "language": "node" })
+- "Create a python dockerfile" -> generate_dockerfile({ "language": "python" })
+- "Make a dockerfile for go" -> generate_dockerfile({ "language": "go" })
+-------------------------------------------------
+
 ⛔ STRICT RULES
 --------------------------------------------------
 - NEVER invent IDs
@@ -309,6 +321,23 @@ const DOCKER_TOOLS = [
         type: "object",
         properties: { imageName: { type: "string" } },
         required: ["imageName"],
+      },
+    },
+  },
+   {
+    type: "function",
+    function: {
+      name: "generate_dockerfile",
+      description: "Generate a production-ready Dockerfile for a specific programming language.",
+      parameters: {
+        type: "object",
+        properties: {
+          language: { 
+            type: "string", 
+            description: "The programming language (e.g. node, python, go, nextJs, reactJs)" 
+          },
+        },
+        required: ["language"],
       },
     },
   },
