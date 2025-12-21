@@ -19,7 +19,7 @@ export const codeWorker = new Worker(
           const { language } = data;
           broadcastLog(`  > Generating Bulletproof Dockerfile for ${language}...`);
 
-          // Simulate processing time
+  
           await new Promise(r => setTimeout(r, 500));
 
           let content = "";
@@ -37,6 +37,63 @@ export const codeWorker = new Worker(
           broadcastLog(`  > ✔ Code Generated Successfully.`);
           return { code: content, language: "dockerfile" };
         }
+
+        case "generate_k8s_manifest": {
+        const { imageName, port = "3000", replicas = "2" } = data;
+        broadcastLog(`  > ☸️ Generating Kubernetes Manifests for ${imageName}...`);
+
+      
+        await new Promise(r => setTimeout(r, 500));
+
+        const cleanName = imageName.replace(/[:/.]/g, "-");
+
+        const content = `# -------------------
+        # 🚀 KUBERNETES DEPLOYMENT
+        # -------------------
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: ${cleanName}-deploy
+        spec:
+          replicas: ${replicas}
+          selector:
+            matchLabels:
+              app: ${cleanName}
+          template:
+            metadata:
+              labels:
+                app: ${cleanName}
+            spec:
+              containers:
+              - name: ${cleanName}
+                image: ${imageName}
+                ports:
+                - containerPort: ${port}
+                resources:
+                  limits:
+                    memory: "512Mi"
+                    cpu: "500m"
+
+        ---
+        # -------------------
+        # 🌐 LOAD BALANCER SERVICE
+        # -------------------
+        apiVersion: v1
+        kind: Service
+        metadata:
+          name: ${cleanName}-service
+        spec:
+          selector:
+            app: ${cleanName}
+          ports:
+            - protocol: TCP
+              port: 80
+              targetPort: ${port}
+          type: LoadBalancer`;
+
+        broadcastLog(`  > ✔ Manifests Generated.`);
+        return { code: content, language: "yaml", filename: "k8s-deployment.yaml" };
+      }
         default:
           throw new Error(`Unknown code job: ${job.name}`);
       }

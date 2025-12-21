@@ -5,193 +5,6 @@
 
 
 
-
-// import Groq from "groq-sdk";
-
-// const groq = new Groq({
-//   apiKey: process.env.GROQ_API_KEY,
-// });
-
-// const SYSTEM_PROMPT = `
-// You are a backend automation agent responsible for safely managing Docker resources.
-// You must strictly follow the scenario-based decision rules below.
-// You are NOT a conversational assistant — you are an execution planner.
-
-// Your primary responsibility is to decide:
-// - WHEN to call a tool
-// - WHICH tool to call
-// - WHEN to refuse execution and ask for clarification
-
-// You must NEVER assume or invent missing information.
-
-// --------------------------------------------------
-// 🔴 CRITICAL SCENARIO-BASED DECISION MAPPING (MANDATORY)
-// --------------------------------------------------
-
-// ### SCENARIO 1: User wants NEW software or images
-// ACTION:
-// Call:
-// search_images({ term: "<software_name>" })
-
-// --------------------------------------------------
-
-// ### SCENARIO 2: User explicitly provides a Container ID
-// ACTION:
-// Call start_container or stop_container ONLY.
-
-// --------------------------------------------------
-
-// ### SCENARIO 3: User names a service but provides NO container ID
-// ACTION:
-// Respond with TEXT ONLY asking for container ID.
-
-// --------------------------------------------------
-
-// ### SCENARIO 4: User explicitly chooses an image to install
-// ACTION:
-// Call:
-// pull_image({ imageName: "<exact_image_name>" })
-
-// --------------------------------------------------
-
-// ### SCENARIO 5: User asks for visibility
-// ACTION:
-// Call:
-// list_containers()
-
-// --------------------------------------------------
-
-// ⛔ STRICT RULES
-// --------------------------------------------------
-// - NEVER invent IDs
-// - NEVER guess
-// - One action per response
-// `;
-
-// const DOCKER_TOOLS = [
-//   { name: "list_containers" },
-//   { name: "start_container" },
-//   { name: "stop_container" },
-//   { name: "search_images" },
-//   { name: "pull_image" },
-// ];
-
-// function routeIntent(text) {
-//   const lower = text.toLowerCase();
-
-//   // 🔴 1. EXPLICIT INSTALL / PULL CONFIRMATION (from ImageStore)
-//   if (/pull this image now/.test(lower)) {
-//     const match = text.match(/'([^']+)'/);
-//     if (match) {
-//       return {
-//         name: "pull_image",
-//         args: { imageName: match[1] },
-//       };
-//     }
-//   }
-
-//   // 2. List containers
-//   if (/list|show.*containers/.test(lower)) {
-//     return { name: "list_containers", args: {} };
-//   }
-
-//   // 3. Search images (discovery)
-//   if (/install|get|search|show.*images/.test(lower)) {
-//     const match = lower.match(
-//       /redis|mongo|mysql|postgres|nginx|node|python/
-//     );
-//     if (match) {
-//       return { name: "search_images", args: { term: match[0] } };
-//     }
-//   }
-
-//   // 4. Direct pull (user typed pull nginx)
-//   if (/pull|download/.test(lower)) {
-//     const match = text.match(/([\w-]+(:[\w.-]+)?)/);
-//     if (match) {
-//       return { name: "pull_image", args: { imageName: match[1] } };
-//     }
-//   }
-
-//   return null;
-// }
-
-
-// export async function POST(req) {
-//   try {
-//     const body = await req.json();
-//     const history = Array.isArray(body.history) ? body.history : [];
-//     const message = typeof body.message === "string" ? body.message : "";
-//     // 🔴 HARD BYPASS FOR IMAGESTORE INSTALL (NO ROUTING, NO AI INTERPRETATION)
-// if (message.startsWith("System: User selected")) {
-//   const match = message.match(/'([^']+)'/);
-//   if (match) {
-//     return Response.json({
-//       role: "model",
-//       toolRequest: {
-//         name: "pull_image",
-//         args: { imageName: match[1] },
-//       },
-//     });
-//   }
-// }
-
-
-//     const messages = [
-//       { role: "system", content: SYSTEM_PROMPT },
-//       ...history.map(h => ({
-//         role: h.role === "model" ? "assistant" : "user",
-//         content: h.parts?.[0]?.text ?? "",
-//       })),
-//       { role: "user", content: message },
-//     ];
-
-//     const completion = await groq.chat.completions.create({
-//       model: "llama-3.3-70b-versatile",
-//       messages,
-//       tool_choice: "none", // 🔴 CRITICAL FIX
-//     });
-
-//     const choice = completion.choices[0];
-//     const text = choice.message.content ?? "";
-
-//     const intent = routeIntent(text);
-
-//     if (intent) {
-//       return Response.json({
-//         role: "model",
-//         toolRequest: intent,
-//       });
-//     }
-
-//     return Response.json({
-//       role: "model",
-//       text,
-//     });
-//   } catch (error) {
-//     return Response.json(
-//       { error: error instanceof Error ? error.message : "Unknown server error" },
-//       { status: 500 }
-//     );
-//   }
-// }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 import Groq from "groq-sdk";
 
 const groq = new Groq({
@@ -259,6 +72,17 @@ Call: generate_dockerfile({ language: "language_name" })
 - "Make a dockerfile for go" -> generate_dockerfile({ "language": "go" })
 -------------------------------------------------
 
+### 6. KUBERNETES GENERATION
+**Trigger:** User asks for "k8s files", "deployment yaml", "manifests", or "deploy to kubernetes".
+
+✅ **CORRECT ACTION:**
+Call: generate_k8s_manifest({ imageName: "name", port: "3002" })
+
+**Examples:**
+- "Create k8s files for nginx" -> generate_k8s_manifest({ "imageName": "nginx", "port": "80" })
+- "Deploy my-node-app to kubernetes" -> generate_k8s_manifest({ "imageName": "my-node-app", "port": "3002" })
+------------------------------------------------
+
 ⛔ STRICT RULES
 --------------------------------------------------
 - NEVER invent IDs
@@ -266,7 +90,7 @@ Call: generate_dockerfile({ language: "language_name" })
 - One action per response
 `;
 
-// Define tools structure for the LLM fallback
+
 const DOCKER_TOOLS = [
   {
     type: "function",
@@ -338,6 +162,27 @@ const DOCKER_TOOLS = [
           },
         },
         required: ["language"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "generate_k8s_manifest",
+      description: "Generate Kubernetes deployment and service YAML files for a specific image.",
+      parameters: {
+        type: "object",
+        properties: {
+          imageName: { 
+            type: "string", 
+            description: "The image name (e.g. nginx, my-app, redis:alpine)" 
+          },
+          port: { 
+            type: "string", 
+            description: "The container port (default: 3000)" 
+          },
+        },
+        required: ["imageName"],
       },
     },
   },
