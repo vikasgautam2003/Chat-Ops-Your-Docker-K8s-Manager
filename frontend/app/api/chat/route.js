@@ -426,17 +426,33 @@ const DOCKER_TOOLS = [
 function routeIntent(text) {
   const lower = text.toLowerCase();
 
+  // 🔴 1. EXPLICIT INSTALL / PULL CONFIRMATION (from ImageStore)
+  if (/pull this image now/.test(lower)) {
+    const match = text.match(/'([^']+)'/);
+    if (match) {
+      return {
+        name: "pull_image",
+        args: { imageName: match[1] },
+      };
+    }
+  }
+
+  // 2. List containers
   if (/list|show.*containers/.test(lower)) {
     return { name: "list_containers", args: {} };
   }
 
+  // 3. Search images (discovery)
   if (/install|get|search|show.*images/.test(lower)) {
-    const match = lower.match(/redis|mongo|mysql|postgres|nginx|node|python/);
+    const match = lower.match(
+      /redis|mongo|mysql|postgres|nginx|node|python/
+    );
     if (match) {
       return { name: "search_images", args: { term: match[0] } };
     }
   }
 
+  // 4. Direct pull (user typed pull nginx)
   if (/pull|download/.test(lower)) {
     const match = text.match(/([\w-]+(:[\w.-]+)?)/);
     if (match) {
@@ -444,25 +460,29 @@ function routeIntent(text) {
     }
   }
 
-  if (/start|stop/.test(lower)) {
-    const idMatch = text.match(/\b[a-f0-9]{12}\b/i);
-    if (idMatch) {
-      return {
-        name: lower.includes("stop") ? "stop_container" : "start_container",
-        args: { containerId: idMatch[0] },
-      };
-    }
-    return null;
-  }
-
   return null;
 }
+
 
 export async function POST(req) {
   try {
     const body = await req.json();
     const history = Array.isArray(body.history) ? body.history : [];
     const message = typeof body.message === "string" ? body.message : "";
+    // 🔴 HARD BYPASS FOR IMAGESTORE INSTALL (NO ROUTING, NO AI INTERPRETATION)
+if (message.startsWith("System: User selected")) {
+  const match = message.match(/'([^']+)'/);
+  if (match) {
+    return Response.json({
+      role: "model",
+      toolRequest: {
+        name: "pull_image",
+        args: { imageName: match[1] },
+      },
+    });
+  }
+}
+
 
     const messages = [
       { role: "system", content: SYSTEM_PROMPT },
