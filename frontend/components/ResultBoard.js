@@ -82,6 +82,19 @@ function extractPods(data) {
 }
 
 
+function computeK8sHealthSummary(pods) {
+  return pods.reduce(
+    (acc, pod) => {
+      acc[pod.health]++;
+      return acc;
+    },
+    { healthy: 0, warning: 0, error: 0 }
+  );
+}
+
+
+
+
 const K8sHealthBadge = ({ health }) => {
   const styles = {
     healthy: "bg-green-500/10 text-green-400 border-green-500/20",
@@ -142,6 +155,29 @@ const StatusBadge = ({ state }) => {
     </div>
   );
 };
+
+
+
+const K8sHealthSummary = ({ summary }) => (
+  <div className="mb-6 grid grid-cols-3 gap-4">
+    <div className="rounded-lg border border-green-500/20 bg-green-500/10 p-4">
+      <div className="text-green-400 text-sm font-semibold">HEALTHY</div>
+      <div className="text-2xl font-bold text-white">{summary.healthy}</div>
+    </div>
+
+    <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/10 p-4">
+      <div className="text-yellow-400 text-sm font-semibold">WARNING</div>
+      <div className="text-2xl font-bold text-white">{summary.warning}</div>
+    </div>
+
+    <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-4">
+      <div className="text-red-400 text-sm font-semibold">ERROR</div>
+      <div className="text-2xl font-bold text-white">{summary.error}</div>
+    </div>
+  </div>
+);
+
+
 
 
 const K8sPodTable = ({ pods }) => (
@@ -355,11 +391,15 @@ export default function ResultBoard({ result }) {
 
   const isK8s = result.name?.startsWith("k8s_");
 
+
 if (isK8s) {
   if (result.name === "k8s_get_pods") {
     const pods = extractPods(result.data);
+    const summary = computeK8sHealthSummary(pods);
+
      return (
     <K8sWrapper>
+      <K8sHealthSummary summary={summary} />
       <K8sPodTable pods={pods} />
     </K8sWrapper>
   );
