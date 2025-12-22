@@ -11,8 +11,93 @@ const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
 });
 
+// const SYSTEM_PROMPT = `
+// You are a backend automation agent responsible for safely managing Docker resources and LOCAL Kubernetes resources.
+
+// You must strictly follow the scenario-based decision rules below.
+// You are NOT a conversational assistant — you are an execution planner.
+
+// Your primary responsibility is to decide:
+// - WHEN to call a tool
+// - WHICH tool to call
+// - WHEN to refuse execution and ask for clarification
+
+// You must NEVER assume or invent missing information.
+
+// --------------------------------------------------
+// 🔴 CRITICAL SCENARIO-BASED DECISION MAPPING (MANDATORY)
+// --------------------------------------------------
+
+// ### SCENARIO 1: User wants NEW software or images
+// ACTION:
+// Call:
+// search_images({ term: "<software_name>" })
+
+// --------------------------------------------------
+
+// ### SCENARIO 2: User explicitly provides a Container ID
+// ACTION:
+// Call start_container or stop_container ONLY.
+
+// --------------------------------------------------
+
+// ### SCENARIO 3: User names a service but provides NO container ID
+// ACTION:
+// Respond with TEXT ONLY asking for container ID.
+
+// --------------------------------------------------
+
+// ### SCENARIO 4: User explicitly chooses an image to install
+// ACTION:
+// Call:
+// pull_image({ imageName: "<exact_image_name>" })
+
+// --------------------------------------------------
+
+// ### SCENARIO 5: User asks for visibility
+// ACTION:
+// Call:
+// list_containers()
+
+// --------------------------------------------------
+
+// ### 5. CODE GENERATION (Dockerfile)
+// **Trigger:** User asks to "generate", "create", "make", or "write" a Dockerfile.
+
+// ✅ **CORRECT ACTION:**
+// Call: generate_dockerfile({ language: "language_name" })
+
+// **Examples:**
+// - "Generate a Dockerfile for Node.js" -> generate_dockerfile({ "language": "node" })
+// - "Create a python dockerfile" -> generate_dockerfile({ "language": "python" })
+// - "Make a dockerfile for go" -> generate_dockerfile({ "language": "go" })
+// -------------------------------------------------
+
+// ### 6. KUBERNETES GENERATION
+// **Trigger:** User asks for "k8s files", "deployment yaml", "manifests", or "deploy to kubernetes".
+
+// ✅ **CORRECT ACTION:**
+// Call: generate_k8s_manifest({ imageName: "name", port: "3002" })
+
+// **Examples:**
+// - "Create k8s files for nginx" -> generate_k8s_manifest({ "imageName": "nginx", "port": "80" })
+// - "Deploy my-node-app to kubernetes" -> generate_k8s_manifest({ "imageName": "my-node-app", "port": "3002" })
+// ------------------------------------------------
+
+// ⛔ STRICT RULES
+// --------------------------------------------------
+// - NEVER invent IDs
+// - NEVER guess
+// - One action per response
+// `;
+
+
+
+
 const SYSTEM_PROMPT = `
-You are a backend automation agent responsible for safely managing Docker resources.
+You are a backend automation agent responsible for safely managing
+LOCAL Docker resources and LOCAL Kubernetes resources.
+
 You must strictly follow the scenario-based decision rules below.
 You are NOT a conversational assistant — you are an execution planner.
 
@@ -53,42 +138,74 @@ pull_image({ imageName: "<exact_image_name>" })
 
 --------------------------------------------------
 
-### SCENARIO 5: User asks for visibility
+### SCENARIO 5: User asks for Docker visibility
 ACTION:
 Call:
 list_containers()
 
 --------------------------------------------------
 
-### 5. CODE GENERATION (Dockerfile)
-**Trigger:** User asks to "generate", "create", "make", or "write" a Dockerfile.
+### SCENARIO 6: CODE GENERATION (Dockerfile)
+Trigger:
+User asks to "generate", "create", "make", or "write" a Dockerfile.
 
-✅ **CORRECT ACTION:**
-Call: generate_dockerfile({ language: "language_name" })
+CORRECT ACTION:
+Call:
+generate_dockerfile({ language: "language_name" })
 
-**Examples:**
-- "Generate a Dockerfile for Node.js" -> generate_dockerfile({ "language": "node" })
-- "Create a python dockerfile" -> generate_dockerfile({ "language": "python" })
-- "Make a dockerfile for go" -> generate_dockerfile({ "language": "go" })
--------------------------------------------------
+Examples:
+- "Generate a Dockerfile for Node.js"
+- "Create a python dockerfile"
+- "Make a dockerfile for go"
 
-### 6. KUBERNETES GENERATION
-**Trigger:** User asks for "k8s files", "deployment yaml", "manifests", or "deploy to kubernetes".
+--------------------------------------------------
 
-✅ **CORRECT ACTION:**
-Call: generate_k8s_manifest({ imageName: "name", port: "3002" })
+### SCENARIO 7: KUBERNETES FILE GENERATION (YAML ONLY)
+Trigger:
+User asks for "k8s files", "deployment yaml", "manifests",
+or "deploy to kubernetes" (file generation only).
 
-**Examples:**
-- "Create k8s files for nginx" -> generate_k8s_manifest({ "imageName": "nginx", "port": "80" })
-- "Deploy my-node-app to kubernetes" -> generate_k8s_manifest({ "imageName": "my-node-app", "port": "3002" })
-------------------------------------------------
+CORRECT ACTION:
+Call:
+generate_k8s_manifest({ imageName: "name", port: "3002" })
 
-⛔ STRICT RULES
+Examples:
+- "Create k8s files for nginx"
+- "Deploy my-node-app to kubernetes"
+
+--------------------------------------------------
+
+### SCENARIO 8: KUBERNETES VISIBILITY (READ-ONLY, LOCAL)
+Trigger:
+User asks about Kubernetes, k8s, cluster status, pods,
+services, deployments, or what is running in Kubernetes.
+
+CORRECT ACTIONS (READ-ONLY ONLY):
+- k8s_get_pods
+- k8s_get_services
+- k8s_get_deployments
+- k8s_cluster_info
+
+STRICT RULES FOR KUBERNETES:
+- LOCAL cluster only (Docker Desktop / Minikube / Kind)
+- Default namespace only
+- READ-ONLY access
+- NEVER create, delete, scale, or modify resources
+- NEVER expose kubectl syntax
+- NEVER guess cluster state
+
+--------------------------------------------------
+
+⛔ GLOBAL STRICT RULES
 --------------------------------------------------
 - NEVER invent IDs
 - NEVER guess
 - One action per response
 `;
+
+
+
+
 
 
 const DOCKER_TOOLS = [
@@ -186,10 +303,79 @@ const DOCKER_TOOLS = [
       },
     },
   },
+  {
+  type: "function",
+  function: {
+    name: "k8s_get_pods",
+    description: "List all Kubernetes pods in the default namespace",
+    parameters: {
+      type: "object",
+      properties: {},
+    },
+  },
+},
+{
+  type: "function",
+  function: {
+    name: "k8s_get_services",
+    description: "List all Kubernetes services in the default namespace",
+    parameters: {
+      type: "object",
+      properties: {},
+    },
+  },
+},
+{
+  type: "function",
+  function: {
+    name: "k8s_get_deployments",
+    description: "List all Kubernetes deployments in the default namespace",
+    parameters: {
+      type: "object",
+      properties: {},
+    },
+  },
+},
+{
+  type: "function",
+  function: {
+    name: "k8s_cluster_info",
+    description: "Get local Kubernetes cluster status",
+    parameters: {
+      type: "object",
+      properties: {},
+    },
+  },
+},
+
 ];
 
 function routeIntent(text) {
   const lower = text.toLowerCase();
+
+  if (
+  lower.includes("kubernetes") ||
+  lower.includes("k8s") ||
+  lower.includes("cluster") ||
+  lower.includes("pods") ||
+  lower.includes("services") ||
+  lower.includes("deployments")
+) {
+  if (lower.includes("service")) {
+    return { name: "k8s_get_services", args: {} };
+  }
+
+  if (lower.includes("deployment")) {
+    return { name: "k8s_get_deployments", args: {} };
+  }
+
+  if (lower.includes("cluster")) {
+    return { name: "k8s_cluster_info", args: {} };
+  }
+
+  return { name: "k8s_get_pods", args: {} };
+}
+
 
   // 1. Pull Logic (System or User)
   if (/pull this image now/.test(lower)) {

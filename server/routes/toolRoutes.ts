@@ -1,7 +1,7 @@
 import { Router, Request, Response } from "express";
 import { 
   dockerQueue, dockerQueueEvents, 
-  codeQueue, codeQueueEvents // Import new queue
+  codeQueue, codeQueueEvents , k8sQueue, k8sQueueEvents
 } from "../queue";
 import { broadcastLog } from "../lib/websocket";
 
@@ -22,6 +22,11 @@ router.post("/:toolName", async (req: Request, res: Response) => {
       job = await codeQueue.add(toolName, args);
       result = await job.waitUntilFinished(codeQueueEvents, 5000);
     } 
+    else if (toolName.startsWith("k8s_")) {
+      job = await k8sQueue.add(toolName, args);
+      result = await job.waitUntilFinished(k8sQueueEvents, 15000);
+    }
+
     else {
      
       job = await dockerQueue.add(toolName, args);
