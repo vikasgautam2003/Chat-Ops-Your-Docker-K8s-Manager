@@ -3,10 +3,18 @@ import IORedis from "ioredis";
 import { exec } from "child_process";
 import { broadcastLog } from "../lib/websocket";
 
+
+
+
 const connection = new IORedis(process.env.REDIS_URL!, {
   maxRetriesPerRequest: null,
   enableReadyCheck: false,
 });
+
+
+
+
+
 
 
 function runKubectl(command: string): Promise<string> {

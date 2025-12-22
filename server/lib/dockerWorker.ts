@@ -3,6 +3,8 @@ import IORedis from "ioredis";
 import { DockerService } from "../src/docker";
 import { broadcastLog } from "../lib/websocket";
 
+
+
 const connection = new IORedis(process.env.REDIS_URL!, {
   maxRetriesPerRequest: null,
   enableReadyCheck: false,
@@ -10,11 +12,14 @@ const connection = new IORedis(process.env.REDIS_URL!, {
 
 const dockerService = new DockerService();
 
+
+
+
 function validateContainerId(containerId: string | null): void {
   if (!containerId || containerId === "container_id_value") {
     throw new Error("Invalid containerId provided");
   }
-  if (!/^[a-f0-9]{5,64}$/i.test(containerId)) { // Adjusted regex to allow short IDs
+  if (!/^[a-f0-9]{5,64}$/i.test(containerId)) {
     throw new Error(`Invalid containerId format: ${containerId}`);
   }
 }

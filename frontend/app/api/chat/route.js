@@ -412,13 +412,23 @@ function routeIntent(text) {
     }
   }
 
-  // 5. Explicit Pull Logic
-  if (/pull|download/.test(lower)) {
-    const match = text.match(/([\w-]+(:[\w.-]+)?)/);
-    if (match) {
-      return { name: "pull_image", args: { imageName: match[1] } };
-    }
+ 
+if (/^pull\s+/i.test(lower)) {
+  const match = lower.match(
+    /^pull\s+([a-z0-9-]+(:[a-z0-9._-]+)?)/i
+  );
+
+  if (match) {
+    return {
+      name: "pull_image",
+      args: { imageName: match[1] },
+    };
   }
+
+  return null;
+}
+
+
 
   return null;
 }

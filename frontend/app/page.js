@@ -31,6 +31,8 @@ import ResultBoard from "@/components/ResultBoard";
 import ImageStore from "@/components/ImageStore";
 import { useChat } from "@/hooks/useChat";
 
+
+
 const Icons = {
   Terminal: () => (
     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -64,8 +66,15 @@ export default function Home() {
     setIsStoreOpen,
   } = useChat();
 
+   
+
+
+
+
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [viewMode, setViewMode] = useState("terminal");
+
+
 
   useEffect(() => {
     if (activeResult) setViewMode("board");
@@ -146,6 +155,8 @@ export default function Home() {
           </div>
         </div>
       </main>
+     
+
     </div>
   );
 }
