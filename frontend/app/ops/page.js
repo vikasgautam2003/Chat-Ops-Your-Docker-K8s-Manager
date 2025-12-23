@@ -87,7 +87,7 @@ export default function Home() {
       />
 
       <main className="flex-1 flex flex-col min-w-0 relative bg-[#0b0d10]">
-        {/* Sidebar toggle */}
+     
         <button
           onClick={() => setIsSidebarOpen(!isSidebarOpen)}
           className="absolute top-4 left-4 z-20 p-2 rounded-full
@@ -97,7 +97,7 @@ export default function Home() {
           <Icons.Sidebar />
         </button>
 
-        {/* Top control bar */}
+   
         <div className="h-14 flex items-center justify-end px-6 gap-4 border-b border-white/5">
           <div className="flex bg-white/5 rounded-full p-1">
             <button

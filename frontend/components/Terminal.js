@@ -123,7 +123,8 @@ export default function TerminalClient() {
       term.writeln("\x1b[90m➜ Initializing terminal...\x1b[0m");
       term.writeln("\x1b[36mConnecting to system log stream...\x1b[0m");
 
-      ws = new WebSocket("ws://localhost:3001");
+      ws = new WebSocket(process.env.NEXT_PUBLIC_WS_URL);
+
 
       ws.onopen = () => {
         term.writeln("\x1b[32m✔ Connected to Log Stream\x1b[0m");
