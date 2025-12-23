@@ -151,7 +151,7 @@ export default function TerminalClient() {
 
   return (
     <div className="w-full h-full flex flex-col rounded-xl overflow-hidden border border-gray-800 shadow-2xl bg-[#0b0f14]">
-      {/* Terminal Header */}
+     
       <div className="flex items-center gap-2 px-4 py-2 bg-[#0f172a] border-b border-gray-800">
         <span className="h-3 w-3 rounded-full bg-red-500" />
         <span className="h-3 w-3 rounded-full bg-yellow-400" />

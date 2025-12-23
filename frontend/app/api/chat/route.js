@@ -439,7 +439,7 @@ export async function POST(req) {
     const history = Array.isArray(body.history) ? body.history : [];
     const message = typeof body.message === "string" ? body.message : "";
 
-    // 1. Handle System Messages from Frontend
+    
     if (message.startsWith("System: User selected")) {
       const match = message.match(/'([^']+)'/);
       if (match) {

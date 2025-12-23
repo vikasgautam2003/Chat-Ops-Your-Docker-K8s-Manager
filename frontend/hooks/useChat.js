@@ -47,7 +47,7 @@ export function useChat() {
         const toolArgs = data1.toolRequest.args ?? {};
 
         const toolRes = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/tools/${toolName}`,
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/tools/${toolName}`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
