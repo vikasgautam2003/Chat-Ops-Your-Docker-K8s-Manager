@@ -36,7 +36,7 @@ app.use("/tools", toolRoutes);
 
 
 
-const PORT = 3001;
+const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
   console.log(`🚀 Distributed System Online on port ${PORT}`);
   console.log(`   - Worker 1: Docker Ops (Active)`);
