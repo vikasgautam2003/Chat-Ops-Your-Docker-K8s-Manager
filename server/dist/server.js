@@ -19,7 +19,7 @@ app.use(express_1.default.json());
 const server = (0, http_1.createServer)(app);
 (0, websocket_1.initWebSocket)(server);
 app.use("/tools", toolRoutes_1.default);
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
     console.log(`🚀 Distributed System Online on port ${PORT}`);
     console.log(`   - Worker 1: Docker Ops (Active)`);
